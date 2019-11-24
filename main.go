@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func CASS(graph *TaskGraph) []*Cluster {
 	var clusters []*Cluster
@@ -11,11 +13,12 @@ func CASS(graph *TaskGraph) []*Cluster {
 	}
 
 	graph.SetInitialSLevel()
+
 	// create cluster for each exit node
 	for _, task := range unscheduled {
 		if len(task.sinks) == 0 {
-			cluster := new(Cluster)
-			cluster.Insert(graph, task)
+			cluster := &Cluster{graph: graph}
+			cluster.Insert(task)
 			clusters = append(clusters, cluster)
 
 			delete(unscheduled, task.id)
@@ -37,34 +40,32 @@ func CASS(graph *TaskGraph) []*Cluster {
 		dst := graph.nodes[y]
 
 		if src.AllChildrenSinks() {
-			// todo: more complex merging
+			// merge sink clusters if possible
 			mergedF := 0
 			for _, child := range src.sinks {
-				mergedF += child.w
-			}
-
-			if mergedF <= src.f {
-				for _, child := range src.sinks {
-					if child != dst {
-						child.cluster.scheduled = []*Task{} // ?
-						dst.cluster.Insert(graph, child)
+				if child != dst {
+					mergedF += child.w
+					if mergedF <= src.f {
+						child.cluster.scheduled = nil
+						dst.cluster.Insert(child)
 					}
 				}
 			}
 		}
 
 		if dst.cluster.Acceptable(src) {
-			dst.cluster.Insert(graph, src)
+			dst.cluster.Insert(src)
 		} else {
-			cluster := new(Cluster)
-			cluster.Insert(graph, src)
+			cluster := &Cluster{graph: graph}
+			cluster.Insert(src)
 			clusters = append(clusters, cluster)
 		}
 
 		delete(unscheduled, x)
 	}
 
-	//graph.SetInitialSLevel()
+	// compute final starting time for each task
+	graph.SetInitialSLevel()
 	return clusters
 }
 
@@ -108,6 +109,8 @@ func main() {
 	)
 
 	for _, cluster := range CASS(taskGraph) {
-		fmt.Printf("%+v\n", cluster)
+		if len(cluster.scheduled) > 0 {
+			fmt.Println(cluster)
+		}
 	}
 }

@@ -121,7 +121,7 @@ func (graph *TaskGraph) TopologicalList() (L []*Task) {
 
 func (graph *TaskGraph) SetInitialSLevel() {
 	for _, task := range graph.TopologicalList() {
-		task.s = graph.S(task.id)
+		task.SetS(graph.S(task.id))
 	}
 }
 

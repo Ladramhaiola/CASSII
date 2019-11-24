@@ -77,3 +77,12 @@ func Queue() *PriorityQueue {
 func Set() *TaskSet {
 	return &TaskSet{data: make(map[int]*Task)}
 }
+
+func Contains(a []*Task, b *Task) bool {
+	for _, task := range a {
+		if task.id == b.id {
+			return true
+		}
+	}
+	return false
+}

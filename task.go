@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Task struct {
 	id int
 
@@ -49,6 +51,10 @@ func (t *Task) AllChildrenSinks() bool {
 		}
 	}
 	return true
+}
+
+func (t *Task) String() string {
+	return fmt.Sprintf("T%d w:%d s:%d f:%d l:%d", t.id, t.w, t.s, t.f, t.l)
 }
 
 func newTask(id, w int) *Task {
