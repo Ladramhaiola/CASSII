@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math"
+	"os"
 )
 
 func CASS(graph *TaskGraph) []*Cluster {
@@ -66,7 +69,15 @@ func CASS(graph *TaskGraph) []*Cluster {
 
 	// compute final starting time for each task
 	graph.SetInitialSLevel()
-	return clusters
+
+	res := []*Cluster{}
+	for _, c := range clusters {
+		if len(c.scheduled) > 0 {
+			res = append(res, c)
+		}
+	}
+
+	return res
 }
 
 func main() {
@@ -108,9 +119,64 @@ func main() {
 		[3]int{7, 9, 5},
 	)
 
-	for _, cluster := range CASS(taskGraph) {
-		if len(cluster.scheduled) > 0 {
-			fmt.Println(cluster)
+	processors := CASS(taskGraph)
+	for _, cluster := range processors {
+		fmt.Println(cluster)
+	}
+
+	// dynamic mapping
+	pool := taskGraph.TopologicalList()
+	for i := 0; i < len(pool); i++ {
+		for j := 0; j < len(pool); j++ {
+			if pool[i].s+pool[i].w < pool[j].s+pool[j].w {
+				pool[i], pool[j] = pool[j], pool[i]
+			}
 		}
 	}
+
+	bridge := make(map[int][]*Task)
+	transfers := make(map[[2]*Task]int)
+
+	for _, task := range pool {
+		if len(task.sinks) != 0 {
+			clusters := make(map[*Cluster]bool)
+
+			for i, child := range task.sinks {
+				if child.cluster != task.cluster {
+					if _, ok := clusters[child.cluster]; !ok {
+						start := EarliestFree(bridge, task.s+task.w+i)
+						bridge[start] = []*Task{task, child}
+						transfers[[2]*Task{task, child}] = start
+						clusters[child.cluster] = true
+					}
+				}
+			}
+		}
+	}
+
+	// final task start times setup
+	for _, task := range taskGraph.TopologicalList() {
+		task.SetS(taskGraph.BridgeS(task.id, transfers))
+	}
+
+	f, err := os.Create("plan.md")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer f.Close()
+
+	table := Markdown(taskGraph, processors, bridge)
+
+	if _, err := f.WriteString(table); err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func EarliestFree(b map[int][]*Task, start int) int {
+	for i := start; i < math.MaxInt32; i++ {
+		if _, ok := b[i]; !ok {
+			return i
+		}
+	}
+	return -1
 }

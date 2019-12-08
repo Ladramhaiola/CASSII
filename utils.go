@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -38,12 +39,15 @@ func (set *TaskSet) Len() int {
 	return len(set.data)
 }
 
+func (set *TaskSet) String() string {
+	return fmt.Sprint(set.data)
+}
+
 type PriorityQueue struct {
 	data map[int][2]int
 }
 
 func (queue *PriorityQueue) Insert(u, l, v int) {
-	// todo: debug insertions
 	if _, ok := queue.data[u]; !ok {
 		queue.data[u] = [2]int{l, v}
 	}
@@ -76,13 +80,4 @@ func Queue() *PriorityQueue {
 
 func Set() *TaskSet {
 	return &TaskSet{data: make(map[int]*Task)}
-}
-
-func Contains(a []*Task, b *Task) bool {
-	for _, task := range a {
-		if task.id == b.id {
-			return true
-		}
-	}
-	return false
 }

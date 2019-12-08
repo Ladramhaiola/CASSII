@@ -66,6 +66,26 @@ func (graph *TaskGraph) S(v int) int {
 	return maxS
 }
 
+func (graph *TaskGraph) BridgeS(v int, bridge map[[2]*Task]int) int {
+	maxS := 0
+	curr := graph.nodes[v]
+
+	for _, parent := range curr.parents {
+		var s int
+		if start, ok := bridge[[2]*Task{parent, curr}]; ok {
+			s = start + graph.CommunicationCost(parent.id, v)
+		} else {
+			s = parent.s + graph.CommunicationCost(parent.id, v) + parent.w
+		}
+
+		if s > maxS {
+			maxS = s
+		}
+	}
+
+	return maxS
+}
+
 func (graph *TaskGraph) DominantSuccessor(u int) (*Task, int) {
 	src, ok := graph.nodes[u]
 	if !ok {

@@ -35,6 +35,15 @@ func (c *Cluster) Insert(t *Task) *Cluster {
 	return c
 }
 
+func (c *Cluster) Contains(id int) bool {
+	for _, task := range c.scheduled {
+		if task.id == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Cluster) ExecutionTime() (f int) {
 	for _, task := range c.scheduled {
 		f += task.w
@@ -61,7 +70,7 @@ func (c *Cluster) String() string {
 		if c.graph != nil {
 			dependencies := make(map[int]int)
 			for _, p := range task.parents {
-				if !Contains(c.scheduled, p) {
+				if !c.Contains(p.id) {
 					dependencies[p.id] = c.graph.CommunicationCost(p.id, task.id)
 				}
 			}
