@@ -8,8 +8,10 @@ import (
 
 func Markdown(graph *TaskGraph, procs []*Cluster, transfers map[int][]*Task) string {
 	solutionTime := 0
+	singleProcTime := 0
 	for _, c := range procs {
 		for _, task := range c.scheduled {
+			singleProcTime += task.w
 			if task.l > solutionTime {
 				solutionTime = task.l
 			}
@@ -17,6 +19,11 @@ func Markdown(graph *TaskGraph, procs []*Cluster, transfers map[int][]*Task) str
 	}
 
 	result := strings.Builder{}
+
+	result.WriteString("### Planning Result\n")
+	result.WriteString(fmt.Sprintf("**Acceleration factor - %f**\n\n", float64(singleProcTime)/float64(solutionTime)))
+	result.WriteString(fmt.Sprintf("**Efficiency ratio - %f**\n", float64(singleProcTime/4.)/float64(solutionTime)))
+
 	result.WriteString(Header(len(procs)))
 
 	for i := 0; i < solutionTime; i++ {
