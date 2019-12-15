@@ -4,9 +4,20 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	rbt "github.com/emirpasic/gods/trees/redblacktree"
 )
 
-func Markdown(graph *TaskGraph, procs []*Cluster, transfers map[int][]*Task) string {
+func Markdown(graph *TaskGraph, procs []*Cluster, bridge *rbt.Tree) string {
+	transfers := make(map[int][]*Task)
+	it := bridge.Iterator()
+	for it.Next() {
+		t := it.Value().(*transfer)
+		for i := t.start; i <= t.end; i++ {
+			transfers[i] = []*Task{t.src, t.dst}
+		}
+	}
+
 	solutionTime := 0
 	singleProcTime := 0
 	for _, c := range procs {

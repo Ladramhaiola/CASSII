@@ -1,5 +1,7 @@
 package main
 
+import rbt "github.com/emirpasic/gods/trees/redblacktree"
+
 type TaskGraph struct {
 	nodes map[int]*Task
 	edges map[[2]int]int
@@ -66,24 +68,30 @@ func (graph *TaskGraph) S(v int) int {
 	return maxS
 }
 
-func (graph *TaskGraph) BridgeS(v int, bridge map[[2]*Task]int) int {
-	maxS := 0
+func (graph *TaskGraph) BridgeS(bridge *rbt.Tree, v int) (max int) {
 	curr := graph.nodes[v]
+
+	transfers := bridge.Values()
+	communications := make(map[[2]int]int)
+
+	for _, t := range transfers {
+		comm := t.(*transfer)
+		communications[[2]int{comm.src.id, comm.dst.id}] = comm.end
+	}
 
 	for _, parent := range curr.parents {
 		var s int
-		if start, ok := bridge[[2]*Task{parent, curr}]; ok {
-			s = start + graph.CommunicationCost(parent.id, v)
+		if start, ok := communications[[2]int{parent.id, v}]; ok {
+			s = start
 		} else {
-			s = parent.s + graph.CommunicationCost(parent.id, v) + parent.w
+			s = parent.s + parent.w
 		}
-
-		if s > maxS {
-			maxS = s
+		if s > max {
+			max = s
 		}
 	}
 
-	return maxS
+	return max
 }
 
 func (graph *TaskGraph) DominantSuccessor(u int) (*Task, int) {

@@ -1,83 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"math"
 	"os"
+	"sort"
+
+	rbt "github.com/emirpasic/gods/trees/redblacktree"
 )
 
-func CASS(graph *TaskGraph) []*Cluster {
-	var clusters []*Cluster
-	var unscheduled = make(map[int]*Task)
-
-	for id, task := range graph.nodes {
-		unscheduled[id] = task
-	}
-
-	graph.SetInitialSLevel()
-
-	// create cluster for each exit node
-	for _, task := range unscheduled {
-		if len(task.sinks) == 0 {
-			cluster := &Cluster{graph: graph}
-			cluster.Insert(task)
-			clusters = append(clusters, cluster)
-
-			delete(unscheduled, task.id)
-		}
-	}
-
-	queue := Queue()
-	for len(unscheduled) > 0 {
-		for _, task := range unscheduled {
-			if task.Ready() {
-				ds, f := graph.DominantSuccessor(task.id)
-				task.SetF(f)
-				queue.Insert(task.id, task.l, ds.id)
-			}
-		}
-
-		x, _, y := queue.DeleteMaxLValue()
-		src := graph.nodes[x]
-		dst := graph.nodes[y]
-
-		if src.AllChildrenSinks() {
-			// merge sink clusters if possible
-			mergedF := 0
-			for _, child := range src.sinks {
-				if child != dst {
-					mergedF += child.w
-					if mergedF <= src.f {
-						child.cluster.scheduled = nil
-						dst.cluster.Insert(child)
-					}
-				}
-			}
-		}
-
-		if dst.cluster.Acceptable(src) {
-			dst.cluster.Insert(src)
-		} else {
-			cluster := &Cluster{graph: graph}
-			cluster.Insert(src)
-			clusters = append(clusters, cluster)
-		}
-
-		delete(unscheduled, x)
-	}
-
-	// compute final starting time for each task
-	graph.SetInitialSLevel()
-
-	res := []*Cluster{}
-	for _, c := range clusters {
-		if len(c.scheduled) > 0 {
-			res = append(res, c)
-		}
-	}
-
-	return res
+type transfer struct {
+	src   *Task
+	dst   *Task
+	start int
+	end   int
 }
 
 func main() {
@@ -120,43 +55,31 @@ func main() {
 	)
 
 	processors := CASS(taskGraph)
-	for _, cluster := range processors {
-		fmt.Println(cluster)
-	}
 
-	// dynamic mapping
-	pool := taskGraph.TopologicalList()
-	for i := 0; i < len(pool); i++ {
-		for j := 0; j < len(pool); j++ {
-			if pool[i].s+pool[i].w < pool[j].s+pool[j].w {
-				pool[i], pool[j] = pool[j], pool[i]
-			}
-		}
-	}
-
-	bridge := make(map[int][]*Task)
-	transfers := make(map[[2]*Task]int)
-
-	for _, task := range pool {
-		if len(task.sinks) != 0 {
-			clusters := make(map[*Cluster]bool)
-
-			for i, child := range task.sinks {
-				if child.cluster != task.cluster {
-					if _, ok := clusters[child.cluster]; !ok {
-						start := EarliestFree(bridge, task.s+task.w+i)
-						bridge[start] = []*Task{task, child}
-						transfers[[2]*Task{task, child}] = start
-						clusters[child.cluster] = true
-					}
-				}
-			}
-		}
-	}
-
-	// final task start times setup
+	bridge := rbt.NewWithIntComparator()
 	for _, task := range taskGraph.TopologicalList() {
-		task.SetS(taskGraph.BridgeS(task.id, transfers))
+		// sort by income time
+		sort.SliceStable(task.sinks, func(i, j int) bool {
+			return task.sinks[i].s < task.sinks[j].s
+		})
+
+		cache := make(map[*Cluster]bool)
+		cache[task.cluster] = true
+
+		for _, child := range task.sinks {
+			if _, ok := cache[child.cluster]; !ok {
+				start := EarliestFree(bridge, task.s+task.w, taskGraph.CommunicationCost(task.id, child.id))
+				t := &transfer{src: task, dst: child, start: start, end: start + taskGraph.CommunicationCost(task.id, child.id)}
+				bridge.Put(start, t)
+				child.SetS(t.end)
+
+				cache[child.cluster] = true
+			}
+		}
+	}
+
+	for _, task := range taskGraph.TopologicalList() {
+		task.SetS(taskGraph.BridgeS(bridge, task.id))
 	}
 
 	f, err := os.Create("plan.md")
@@ -172,11 +95,17 @@ func main() {
 	}
 }
 
-func EarliestFree(b map[int][]*Task, start int) int {
-	for i := start; i < math.MaxInt32; i++ {
-		if _, ok := b[i]; !ok {
-			return i
+func EarliestFree(src *rbt.Tree, start, duration int) int {
+	it := src.Iterator()
+	for it.Next() {
+		interval := it.Value().(*transfer)
+		if interval.start-start >= duration {
+			return start
+		}
+
+		if interval.end > start {
+			start = interval.end
 		}
 	}
-	return -1
+	return start
 }
