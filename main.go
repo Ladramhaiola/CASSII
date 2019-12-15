@@ -57,7 +57,11 @@ func main() {
 	processors := CASS(taskGraph)
 
 	bridge := rbt.NewWithIntComparator()
-	for _, task := range taskGraph.TopologicalList() {
+
+	pool := taskGraph.TopologicalList()
+	sort.SliceStable(pool, func(i, j int) bool { return pool[i].s < pool[j].s })
+
+	for _, task := range pool {
 		// sort by income time
 		sort.SliceStable(task.sinks, func(i, j int) bool {
 			return task.sinks[i].s < task.sinks[j].s
