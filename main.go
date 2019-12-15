@@ -28,6 +28,11 @@ func main() {
 		[2]int{8, 3},
 		[2]int{9, 6},
 		[2]int{10, 2},
+		[2]int{11, 3},
+		[2]int{12, 4},
+		[2]int{13, 1},
+		[2]int{14, 5},
+		[2]int{15, 2},
 	)
 	taskGraph.AddConnections(
 		[3]int{1, 3, 8},
@@ -52,6 +57,14 @@ func main() {
 		[3]int{6, 10, 3},
 
 		[3]int{7, 9, 5},
+		[3]int{7, 12, 6},
+
+		[3]int{9, 11, 2},
+		[3]int{9, 15, 3},
+
+		[3]int{10, 12, 7},
+		[3]int{10, 13, 3},
+		[3]int{10, 14, 6},
 	)
 
 	processors := CASS(taskGraph)
